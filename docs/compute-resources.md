@@ -82,13 +82,13 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp --port 2379-2380 --source-group ${CP_SECURITY_GROUP_ID}
 aws ec2 authorize-security-group-ingress \
   --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10250 --cidr ${CP_SECURITY_GROUP_ID}
+  --protocol tcp --port 10250 --source-group ${CP_SECURITY_GROUP_ID}
 aws ec2 authorize-security-group-ingress \
   --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10259 --cidr ${CP_SECURITY_GROUP_ID}
+  --protocol tcp --port 10259 --source-group ${CP_SECURITY_GROUP_ID}
 aws ec2 authorize-security-group-ingress \
   --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10257 --cidr ${CP_SECURITY_GROUP_ID}
+  --protocol tcp --port 10257 --source-group ${CP_SECURITY_GROUP_ID}
 
 
 aws ec2 authorize-security-group-ingress \
