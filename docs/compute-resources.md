@@ -1,8 +1,6 @@
 # Provisioning Compute Resources
----
 
 ## Networking
----
 
 ### VPC
 ```
@@ -94,7 +92,6 @@ Note that we allow SSH from anywhere into the nodes. This is not best practice, 
 Lastly, note that in the *Kubernetes The Hard Way* tutorial they explicitly allow traffic from the pod cidr range into the security group. Indeed, K8s requires that pods communicate over a network range that is *completely outside your VPC cidr range*. The hard way is to accomplish this without a CNI plugin is by routing it all yourself. This makes it a pain in the ass to add or remove nodes from the cluster. But in the CKA exam they will use a CNI plugin, and in real life you should too. So, we do not need to handle the pod network explicitly in the security group.
 
 ## Compute Instances
----
 
 ### Image
 ```
