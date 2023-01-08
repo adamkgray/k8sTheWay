@@ -49,7 +49,7 @@ If you are new to setting up a VPC in AWS, route tables explicitly redirect netw
 aws ec2 associate-route-table --route-table-id ${ROUTE_TABLE_ID} --subnet-id ${SUBNET_ID}
 ```
 
-It is not enough to merely create the route table. You must associate it with one or more subnets. Here we associate the route table we created with the public subnet we created earlier.
+It is not enough to merely create the route table. You must associate it with one or more subnets. Here we associate the route table we created with the public subnet we created earlier. To continue the metaphore, we apply this plumbing to that bathroom.
 
 ### Security Groups
 ```
@@ -78,9 +78,8 @@ aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --pr
 aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 10250 --cidr 10.0.0.0/16
 aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 30000-32767 --cidr 10.0.0.0/16
 
-
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol ssh --port 22 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol ssh --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 22 --cidr 0.0.0.0/0
 ```
 
 We create the security group according to the required ports and protocols as specified in the [kubernetes documentation](https://kubernetes.io/docs/reference/networking/ports-and-protocols/)
