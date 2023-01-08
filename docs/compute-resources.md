@@ -68,15 +68,38 @@ WORKER_SECURITY_GROUP_ID=$(aws ec2 create-security-group \
 aws ec2 create-tags --resources ${CP_SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway-cp
 aws ec2 create-tags --resources ${WORKER_SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway-worker
 
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 6443 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 2379-2380 --cidr 10.0.0.0/16
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 10250 --cidr 10.0.0.0/16
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 10259 --cidr 10.0.0.0/16
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 10257 --cidr 10.0.0.0/16
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 6443 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 6443 --source-group ${CP_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 6443 --source-group ${WORKER_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 2379-2380 --source-group ${CP_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 10250 --cidr ${CP_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 10259 --cidr ${CP_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${CP_SECURITY_GROUP_ID} \
+  --protocol tcp --port 10257 --cidr ${CP_SECURITY_GROUP_ID}
 
 
-aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 10250 --cidr 10.0.0.0/16
-aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 30000-32767 --cidr 10.0.0.0/16
+aws ec2 authorize-security-group-ingress \
+  --group-id ${WORKER_SECURITY_GROUP_ID} \
+  --protocol tcp --port 10250 --source-group ${CP_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${WORKER_SECURITY_GROUP_ID} \
+  --protocol tcp --port 10250 --source-group ${WORKER_SECURITY_GROUP_ID}
+aws ec2 authorize-security-group-ingress \
+  --group-id ${WORKER_SECURITY_GROUP_ID} \
+  --protocol tcp --port 30000-32767 --cidr 0.0.0.0/0
 
 aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 22 --cidr 0.0.0.0/0
 aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 22 --cidr 0.0.0.0/0
@@ -84,11 +107,10 @@ aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} 
 
 We create the security group according to the required ports and protocols as specified in the [kubernetes documentation](https://kubernetes.io/docs/reference/networking/ports-and-protocols/)
 
-Note that we allow traffic to control planes nodes on `6443` from anywhere. That's because at first we won't put any control plane nodes behind a load balancer. However, if you are designing for high-availability, then you need to put the control plane nodes behind a load balancer. In that case, we can restrict access to port `6443` only from the local VPC, and instead allow open access to `443` on the load balancer. More on that later.
-
-Note that we allow SSH from anywhere into the nodes. This is not best practice, but neither is running AWS commands raw from the terminal to create your k8s cluster. In practice it should be very difficult for any human to directly log into your servers.
-
-Lastly, note that in the *Kubernetes The Hard Way* tutorial they explicitly allow traffic from the pod cidr range into the security group. Indeed, K8s requires that pods communicate over a network range that is *completely outside your VPC cidr range*. The hard way is to accomplish this without a CNI plugin is by routing it all yourself. This makes it a pain in the ass to add or remove nodes from the cluster. But in the CKA exam they will use a CNI plugin, and in real life you should too. So, we do not need to handle the pod network explicitly in the security group.
+- we allow traffic to control planes nodes on `6443` from anywhere. That's because at first we won't put any control plane nodes behind a load balancer. However, if you are designing for high-availability, then you need to put the control plane nodes behind a load balancer. In that case, we can restrict access to port `6443` only from the local VPC, and instead allow open access to `443` on the load balancer. More on that later.
+- we allow SSH from anywhere into the nodes. This is not best practice, but neither is running AWS commands raw from the terminal to create your k8s cluster. In practice it should be very difficult for any human to directly log into your servers.
+- we allow traffic to worker `node port` services from anywhere with the intent that we can deploy some nginx servers there and test them later on. In practice you can restrict access to these ports in a more intelligent way that alligns with your solution.
+- in the *Kubernetes The Hard Way* tutorial they explicitly allow traffic from the pod cidr range into the security group. Indeed, K8s requires that pods communicate over a network range that is *completely outside your VPC cidr range*. The hard way is to accomplish this without a CNI plugin is by routing it all yourself. This makes it a pain in the ass to add or remove nodes from the cluster. But in the CKA exam they will use a CNI plugin, and in real life you should too. So, we do not need to handle the pod network explicitly in the security group.
 
 ## Compute Instances
 
