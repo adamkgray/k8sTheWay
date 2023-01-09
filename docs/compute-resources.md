@@ -147,7 +147,7 @@ for i in 0 1; do
     --count 1 \
     --key-name k8stheway \
     --security-group-ids ${CP_SECURITY_GROUP_ID} \
-    --instance-type t3.micro \
+    --instance-type t3.small \
     --private-ip-address 10.0.1.1${i} \
     --subnet-id ${SUBNET_ID} \
     --block-device-mappings='{"DeviceName": "/dev/sda1", "Ebs": { "VolumeSize": 50 }, "NoDevice": "" }' \
@@ -159,7 +159,7 @@ done
 
 Create 2 controller nodes - 1 main node and 1 that we will join to it. We explicitly assign these instances private IPs with values `10.0.1.10` and `10.0.1.11`. Explicit IPs are not necessary for setup, but they makes it trivial put the controllers behind a network load balancer later on. The alternative would be to place these instances in an autoscaling group, but that is going too far for this tutorial.
 
-We use `t3.micro` instances because the kubeadm [docs](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin) recommend "2 GB or more of RAM per machine" and "2 CPUs or more"
+We use `t3.small` instances because the kubeadm [docs](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin) recommend "2 GB or more of RAM per machine" and "2 CPUs or more"
 
 ### Workers
 ```
@@ -170,7 +170,7 @@ for i in 0 1; do
     --count 1 \
     --key-name k8stheway \
     --security-group-ids ${WORKER_SECURITY_GROUP_ID} \
-    --instance-type t3.micro \
+    --instance-type t3.small \
     --subnet-id ${SUBNET_ID} \
     --block-device-mappings='{"DeviceName": "/dev/sda1", "Ebs": { "VolumeSize": 50 }, "NoDevice": "" }' \
     --output text --query 'Instances[].InstanceId')
