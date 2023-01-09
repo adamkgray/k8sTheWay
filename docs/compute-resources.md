@@ -1,5 +1,7 @@
 # Provisioning Compute Resources
 
+There is no one way to set up the compute resources for a kubernetes cluster. This tutorial uses AWS to provision 4 servers in a reasonably secure network.
+
 ## Networking
 
 ### VPC
