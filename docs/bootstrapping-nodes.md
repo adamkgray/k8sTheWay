@@ -2,34 +2,14 @@
 
 When using `kubeadm` to provision a cluster, all nodes -- control plane and worker -- require the same configuration. The commands in this section should be run on all servers.
 
-## Multiplexing
-
-If you are new to `tmux`, this section explains what it is and how to use it.
-
-The name `tmux` is a shortening of the phrase "terminal multiplexer". It lets you run multiple terminals screens at once. Now, if you run a modern terminal emulator like `iterm2` or `alacritty`, these already come with support for things like tabs and split panes. What makes `tmux` different is that it allows you to do split screen on on _any_ terminal, regardless of whether the parent app supports it. The use case for this is that you can have the same workflow on your local machine _and on remote servers_. Here are some of the core commands:
-
-- start tmux: `tmux`
-- exit tmux: `exit` or `<ctrl-d>` (`tmux` exits when the shell exits)
-- split panes vertically: `<ctrl-b> %`
-- split panes horizontally: `<ctrl-b> "`
-- toggle pane full screen: `<ctrl-b> z`
-- new tab/window: `<ctrl-b> c"`
-- open up tab/window browser: `<ctrl-b> w"` (then use vim-keys or d-pad to select a tab and press `enter`)
-- send same keystrokes to all panes: `<ctrl-b> :setw synchronize-panes on <enter>`
-- stop same keystrokes to all panes: `<ctrl-b> :setw synchronize-panes off <enter>`
-
-Log into all the servers created in the previous section in different `tmux` panes, and then synchronize keystrokes. If that's too much for you, just do it all one-by-one.
-
 ## Prerequisites
-
-Let's begin preparing the servers.
 
 ### Update
 ```
-sudo apt-get update -y`
+sudo apt-get update -y
 ```
 
-### Network Settings
+### Network settings
 ```
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
 overlay
@@ -61,4 +41,56 @@ sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables ne
 
 ## Containerd
 
+In "Kubernetes The Hard Way", they run all the control plane and background services with `systemd`. On the contrary, when setting up with `kubeadm`, everything will run as a container.
 
+K8s is a bring-your-own-container system. Popular choices are `docker`, `containerd` and `crio-o`, although technically you could write your own it it's compliant. In this tutorial we will use `containerd` as it seems to be the most popular choice, and `docker` is becoming passé.
+
+The `containerd` process itself will run as a `systemd` service. We install it using the official [docs](https://github.com/containerd/containerd/blob/main/docs/getting-started.md#getting-started-with-containerd).
+
+### Download and install containerd
+
+```
+wget https://github.com/containerd/containerd/releases/download/v1.6.15/containerd-1.6.15-linux-amd64.tar.gz
+tar Cxzvf /usr/local containerd-1.6.15-linux-amd64.tar.gz
+```
+
+### Setup containerd for systemd
+```
+wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+mv containerd.service /usr/local/lib/systemd/system/containerd.service
+systemctl daemon-reload
+systemctl enable containerd
+```
+
+### Download and install runc
+```
+wget https://github.com/opencontainers/runc/releases/download/v1.1.4/runc.amd64
+install -m 755 runc.amd64 /usr/local/sbin/runc
+```
+
+### Download and install CNI plugins
+```
+wget https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz
+tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.1.1.tgz
+```
+
+### Configure the containerd cgroup driver
+```
+cat << EOF | sudo tee /etc/containerd/config.toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+    SystemdCgroup = true
+EOF
+```
+
+The kubernetes [docs](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cgroup-drivers) state that `kubelet` and `containerd` must run in the same cgroup. By defualt they do not. Since Ubuntu -- and most other modern linux distros -- use `systemd`, we configure `kubelet` and `continerd` to use the `systemd` cgroup.
+
+### Start containerd
+```
+sudo systemctl start containerd
+```
+
+### Verify installation
+```
+sudo systemctl status containerd
+```
