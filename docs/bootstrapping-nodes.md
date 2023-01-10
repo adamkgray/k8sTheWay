@@ -1,13 +1,24 @@
 # Bootstrapping Nodes
 
-When using `kubeadm` to provision a cluster, all nodes -- control plane and worker -- require the same configuration. The commands in this section should be run on all servers.
+When using `kubeadm` to provision a cluster, all nodes -- control plane and worker -- require nearly the same configuration. In this tutorial we install the following on all nodes:
+
+- `containerd` + `runc`
+- `crictl`
+- `kubectl`
+- `kubeadm`
+
+Additionally, on worker nodes we install `kubelet`
 
 ## Prerequisites
 
 ### Dependencies
 ```
 sudo apt-get update -y
-sudo apt-get -y install socat conntrack ipset
+
+sudo apt-get -y install \
+  socat \
+  conntrack \
+  ipset
 ```
 
 ### Turn swap off
@@ -35,6 +46,8 @@ sudo sysctl --system
 ```
 
 The `kubeadm` [docs](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#install-and-configure-prerequisites) specify that these setting be applied on all nodes
+
+Honestly I'm not entirely sure what these settings do. I think they enable VxLAN traffic, but how and why is a mystery.
 
 ## Containerd
 
@@ -117,17 +130,25 @@ EOF
 
 Docs [here](https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/#before-you-begin)
 
-## Kubeadm, Kubelet and Kubectl
+## Kubeadm and Kubectl
 
 ### Install
 ```
-sudo apt-get install -y apt-transport-https ca-certificates curl
+sudo apt-get install -y \
+  apt-transport-https \
+  ca-certificates curl
 sudo mkdir -p /etc/apt/keyrings/
 sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt-get update -y
 sudo apt-get install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+sudo apt-mark hold kubeadm kubectl
 ```
 
 Docs [here](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl)
+
+### Kubelet (worker nodes only)
+
+```
+sudo apt-mark hold kubeadm kubectl
+```
