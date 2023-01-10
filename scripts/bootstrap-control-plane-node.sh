@@ -51,6 +51,13 @@ EOF
 
 sudo systemctl start containerd
 
+sudo mkdir -p /etc/NetworkManager/conf.d
+
+cat <<EOF | sudo tee /etc/NetworkManager/conf.d/calico.conf
+[keyfile]
+unmanaged-devices=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico;interface-name:vxlan-v6.calico;interface-name:wireguard.cali;interface-name:wg-v6.cali
+EOF
+
 wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz
 tar -xvf crictl-v1.21.0-linux-amd64.tar.gz
 chmod +x crictl
@@ -72,6 +79,3 @@ echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://a
 sudo apt-get update -y
 sudo apt-get install -y kubeadm kubectl
 sudo apt-mark hold kubeadm kubectl
-
-sudo apt-get install -y kubelet
-sudo apt-mark hold kubelet
