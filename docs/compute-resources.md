@@ -114,6 +114,37 @@ We create the security group according to the required ports and protocols as sp
 - we allow traffic to worker `node port` services from anywhere with the intent that we can deploy some nginx servers there and test them later on. In practice you can restrict access to these ports in a more intelligent way that alligns with your solution.
 - in the *Kubernetes The Hard Way* tutorial they explicitly allow traffic from the pod cidr range into the security group. Indeed, K8s requires that pods communicate over a network range that is *completely outside your VPC cidr range*. The hard way is to accomplish this without a CNI plugin is by routing it all yourself. This makes it a pain in the ass to add or remove nodes from the cluster. But in the CKA exam they will use a CNI plugin, and in real life you should too. So, we do not need to handle the pod network explicitly in the security group.
 
+### Load Balancer
+```
+LOAD_BALANCER_ARN=$(aws elbv2 create-load-balancer \
+  --name k8stheway \
+  --subnets ${SUBNET_ID} \
+  --scheme internet-facing \
+  --type network \
+  --output text --query 'LoadBalancers[].LoadBalancerArn')
+
+TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+  --name k8stheway \
+  --protocol TCP \
+  --port 6443 \
+  --vpc-id ${VPC_ID} \
+  --target-type ip \
+  --output text --query 'TargetGroups[].TargetGroupArn')
+
+aws elbv2 register-targets \
+  --target-group-arn ${TARGET_GROUP_ARN} \
+  --targets Id=10.0.1.1{0,1}
+
+aws elbv2 create-listener \
+  --load-balancer-arn ${LOAD_BALANCER_ARN} \
+  --protocol TCP \
+  --port 443 \
+  --default-actions Type=forward,TargetGroupArn=${TARGET_GROUP_ARN} \
+  --output text --query 'Listeners[].ListenerArn'
+```
+
+We create an internet-facing network load balancer. It forwards all TCP traffic to the controllers. Although it is theoretically possible to spin up a k8s cluster using `kubeadm` without a load balancer for the controllers, your team will want it eventually, so better to future proof. A simple network load balancer in `us-east-1` won't break the bank (with little traffic it could be like $20 a month?)
+
 ## Compute Instances
 
 ### Image
