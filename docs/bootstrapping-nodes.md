@@ -1,13 +1,12 @@
 # Bootstrapping Nodes
 
-When using `kubeadm` to provision a cluster, all nodes -- control plane and worker -- require nearly the same configuration. In this tutorial we install the following on all nodes:
+When using `kubeadm` to provision a cluster, all nodes require the same initial configuration.
 
 - `containerd` + `runc`
 - `crictl`
 - `kubectl`
 - `kubeadm`
-
-Additionally, on worker nodes we install `kubelet`
+- `kubelet`
 
 ## Prerequisites
 
@@ -153,15 +152,8 @@ sudo mkdir -p /etc/apt/keyrings/
 sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt-get update -y
-sudo apt-get install -y kubeadm kubectl
-sudo apt-mark hold kubeadm kubectl
+sudo apt-get install -y kubeadm kubectl kubelet
+sudo apt-mark hold kubeadm kubectl kubelet
 ```
 
 Docs [here](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl)
-
-### Kubelet (worker nodes only)
-
-```
-sudo apt-get install -y kubelet
-sudo apt-mark hold kubelet
-```

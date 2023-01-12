@@ -1,7 +1,9 @@
 # Initialise the Cluster
 ```
-sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint=<KUBERNETES_PUBLIC_ADDRESS>:443
 ```
+
+The `KUBERNETES_PUBLIC_ADDRESS` is the domain name of the network load balancer. Replace it with the correct value. You have to specify port `443` because by default it will look for `6443` instead.
 
 Run this command on the ec2 instance named `controller-0`. You can actually run it on any controller instance, but let's keep things in order.
 
