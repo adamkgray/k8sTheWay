@@ -90,83 +90,70 @@ We create an internet-facing network load balancer. It forwards all TCP traffic 
 
 ### Security Groups
 ```
-CP_SECURITY_GROUP_ID=$(aws ec2 create-security-group \
-  --group-name k8stheway-cp \
-  --description "k8s cp security group" \
+SECURITY_GROUP_ID=$(aws ec2 create-security-group \
+  --group-name k8stheway \
+  --description "k8stheway security group" \
   --vpc-id ${VPC_ID} \
   --output text --query 'GroupId')
 
-WORKER_SECURITY_GROUP_ID=$(aws ec2 create-security-group \
-  --group-name k8stheway-worker \
-  --description "k8s worker security group" \
-  --vpc-id ${VPC_ID} \
-  --output text --query 'GroupId')
+aws ec2 create-tags --resources ${SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway-cp
 
-aws ec2 create-tags --resources ${CP_SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway-cp
-aws ec2 create-tags --resources ${WORKER_SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway-worker
-
-# control plane rules
+# public access API (optional)
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
+  --group-id ${SECURITY_GROUP_ID} \
   --protocol tcp --port 6443 --cidr 0.0.0.0/0
+
+# local access API (from NLB to servers)
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 6443 --source-group ${CP_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 6443 --cidr 10.0.0.0/16
+
+# internal API access
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 5473 --source-group ${CP_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 6443 --source-group ${SECURITY_GROUP_ID}
+
+# Calico Typha
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 179 --source-group ${CP_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 5473 --source-group ${SECURITY_GROUP_ID}
+
+# Calico BGP
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 5473 --source-group ${WORKER_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 179 --source-group ${SECURITY_GROUP_ID}
+
+# etcd server client API
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 179 --source-group ${WORKER_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 2379-2380 --source-group ${SECURITY_GROUP_ID}
+
+# Kubelet API
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 6443 --source-group ${WORKER_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 10250 --source-group ${SECURITY_GROUP_ID}
+
+# kube-scheduler
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 2379-2380 --source-group ${CP_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 10259 --source-group ${SECURITY_GROUP_ID}
+
+# kube-controller-manager
 aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10250 --source-group ${CP_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10259 --source-group ${CP_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${CP_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10257 --source-group ${CP_SECURITY_GROUP_ID}
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 10257 --source-group ${SECURITY_GROUP_ID}
 
 
-# worker rules
+# NodePort Services
 aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10250 --source-group ${CP_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
-  --protocol tcp --port 10250 --source-group ${WORKER_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
+  --group-id ${SECURITY_GROUP_ID} \
   --protocol tcp --port 30000-32767 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
-  --protocol tcp --port 5473 --source-group ${CP_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
-  --protocol tcp --port 179 --source-group ${CP_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
-  --protocol tcp --port 5473 --source-group ${WORKER_SECURITY_GROUP_ID}
-aws ec2 authorize-security-group-ingress \
-  --group-id ${WORKER_SECURITY_GROUP_ID} \
-  --protocol tcp --port 179 --source-group ${WORKER_SECURITY_GROUP_ID}
 
-# authorise ssh for control plane and workers
-aws ec2 authorize-security-group-ingress --group-id ${CP_SECURITY_GROUP_ID} --protocol tcp --port 22 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id ${WORKER_SECURITY_GROUP_ID} --protocol tcp --port 22 --cidr 0.0.0.0/0
+
+# SSH
+aws ec2 authorize-security-group-ingress \
+  --group-id ${SECURITY_GROUP_ID} \
+  --protocol tcp --port 22 --cidr 0.0.0.0/0
 ```
 
 We create the security group according to the required ports and protocols as specified in the [kubernetes documentation](https://kubernetes.io/docs/reference/networking/ports-and-protocols/)
@@ -208,7 +195,7 @@ for i in 0 1; do
     --image-id ${IMAGE_ID} \
     --count 1 \
     --key-name k8stheway \
-    --security-group-ids ${CP_SECURITY_GROUP_ID} \
+    --security-group-ids ${SECURITY_GROUP_ID} \
     --instance-type t3.small \
     --private-ip-address 10.0.1.1${i} \
     --subnet-id ${SUBNET_ID} \
@@ -231,7 +218,7 @@ for i in 0 1; do
     --image-id ${IMAGE_ID} \
     --count 1 \
     --key-name k8stheway \
-    --security-group-ids ${WORKER_SECURITY_GROUP_ID} \
+    --security-group-ids ${SECURITY_GROUP_ID} \
     --instance-type t3.small \
     --subnet-id ${SUBNET_ID} \
     --block-device-mappings='{"DeviceName": "/dev/sda1", "Ebs": { "VolumeSize": 50 }, "NoDevice": "" }' \
