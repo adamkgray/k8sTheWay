@@ -96,61 +96,24 @@ SECURITY_GROUP_ID=$(aws ec2 create-security-group \
   --vpc-id ${VPC_ID} \
   --output text --query 'GroupId')
 
-aws ec2 create-tags --resources ${SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway-cp
+aws ec2 create-tags --resources ${SECURITY_GROUP_ID} --tags Key=Name,Value=k8stheway
 
-# public access API (optional)
+# Allow all inter-node communication
 aws ec2 authorize-security-group-ingress \
   --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 6443 --cidr 0.0.0.0/0
+  --protocol all --source-group ${SECURITY_GROUP_ID}
 
-# local access API (from NLB to servers)
+# API access from local network
 aws ec2 authorize-security-group-ingress \
   --group-id ${SECURITY_GROUP_ID} \
   --protocol tcp --port 6443 --cidr 10.0.0.0/16
 
-# internal API access
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 6443 --source-group ${SECURITY_GROUP_ID}
-
-# Calico Typha
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 5473 --source-group ${SECURITY_GROUP_ID}
-
-# Calico BGP
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 179 --source-group ${SECURITY_GROUP_ID}
-
-# etcd server client API
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 2379-2380 --source-group ${SECURITY_GROUP_ID}
-
-# Kubelet API
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 10250 --source-group ${SECURITY_GROUP_ID}
-
-# kube-scheduler
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 10259 --source-group ${SECURITY_GROUP_ID}
-
-# kube-controller-manager
-aws ec2 authorize-security-group-ingress \
-  --group-id ${SECURITY_GROUP_ID} \
-  --protocol tcp --port 10257 --source-group ${SECURITY_GROUP_ID}
-
-
-# NodePort Services
+# NodePort services access from anywhere
 aws ec2 authorize-security-group-ingress \
   --group-id ${SECURITY_GROUP_ID} \
   --protocol tcp --port 30000-32767 --cidr 0.0.0.0/0
 
-
-# SSH
+# SSH access from anywhere
 aws ec2 authorize-security-group-ingress \
   --group-id ${SECURITY_GROUP_ID} \
   --protocol tcp --port 22 --cidr 0.0.0.0/0
@@ -201,6 +164,7 @@ for i in 0 1; do
     --subnet-id ${SUBNET_ID} \
     --block-device-mappings='{"DeviceName": "/dev/sda1", "Ebs": { "VolumeSize": 50 }, "NoDevice": "" }' \
     --output text --query 'Instances[].InstanceId')
+  aws ec2 modify-instance-attribute --instance-id ${INSTANCE_ID} --no-source-dest-check
   aws ec2 create-tags --resources ${INSTANCE_ID} --tags "Key=Name,Value=controller-${i}"
   echo "controller-${i} created "
 done
@@ -209,6 +173,8 @@ done
 Create 2 controller nodes - 1 main node and 1 that we will join to it. We explicitly assign these instances private IPs with values `10.0.1.10` and `10.0.1.11`. Explicit IPs are not necessary for setup, but they makes it trivial put the controllers behind a network load balancer later on. The alternative would be to place these instances in an autoscaling group, but that is going too far for this tutorial.
 
 We use `t3.small` instances because the kubeadm [docs](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin) recommend "2 GB or more of RAM per machine" and "2 CPUs or more"
+
+Notice that we disable the source-destination checks for the nodes. *This is very important!* When using a network overlay, inter-pod communication will happen in a network that is outside the jurisdiction of EC2. Unless we disable the source-destination checks, EC2 will try to stop this traffic by default. So we need to explicitly tell AWS that we are doing our own thing.
 
 ### Workers
 ```
@@ -223,6 +189,7 @@ for i in 0 1; do
     --subnet-id ${SUBNET_ID} \
     --block-device-mappings='{"DeviceName": "/dev/sda1", "Ebs": { "VolumeSize": 50 }, "NoDevice": "" }' \
     --output text --query 'Instances[].InstanceId')
+  aws ec2 modify-instance-attribute --instance-id ${INSTANCE_ID} --no-source-dest-check
   aws ec2 create-tags --resources ${INSTANCE_ID} --tags "Key=Name,Value=worker-${i}"
   echo "worker-${i} created"
 done
