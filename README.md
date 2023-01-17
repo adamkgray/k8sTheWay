@@ -12,11 +12,11 @@ My hope with this tutorial is to leave the reader satisfied, informed, and pract
 
 Enjoy!
 
-[1 - Provision Compute Resources](docs/01-compute-resources.md.md)
-[2 - Bootstrap Nodes](docs/02-bootstrapping-nodes.md)
-[3 - Initialize Cluster](docs/03-init-cluster.md)
-[4 - Install Pod Network](docs/04-pod-network.md)
-[5 - Add Nodes](docs/05-add-nodes.md)
+- [1 - Provision Compute Resources](docs/01-compute-resources.md.md)
+- [2 - Bootstrap Nodes](docs/02-bootstrapping-nodes.md)
+- [3 - Initialize Cluster](docs/03-init-cluster.md)
+- [4 - Install Pod Network](docs/04-pod-network.md)
+- [5 - Add Nodes](docs/05-add-nodes.md)
 
 ## CKA Exam Tips
 
