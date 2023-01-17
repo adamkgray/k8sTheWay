@@ -20,4 +20,4 @@ Enjoy!
 
 ## CKA Exam Tips
 
-[K8s The Fast Way](docs/k8s-the-fast-way.md)
+- [K8s The Fast Way](docs/k8s-the-fast-way.md)
