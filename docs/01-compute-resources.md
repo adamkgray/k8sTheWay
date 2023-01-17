@@ -53,41 +53,6 @@ aws ec2 associate-route-table --route-table-id ${ROUTE_TABLE_ID} --subnet-id ${S
 
 It is not enough to merely create the route table. You must associate it with one or more subnets. Here we associate the route table we created with the public subnet we created earlier. To continue the metaphore, we apply this plumbing to that bathroom.
 
-### Load Balancer
-```
-LOAD_BALANCER_ARN=$(aws elbv2 create-load-balancer \
-  --name k8stheway \
-  --subnets ${SUBNET_ID} \
-  --scheme internet-facing \
-  --type network \
-  --output text --query 'LoadBalancers[].LoadBalancerArn')
-
-TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
-  --name k8stheway \
-  --protocol TCP \
-  --port 6443 \
-  --vpc-id ${VPC_ID} \
-  --target-type ip \
-  --output text --query 'TargetGroups[].TargetGroupArn')
-
-aws elbv2 register-targets \
-  --target-group-arn ${TARGET_GROUP_ARN} \
-  --targets Id=10.0.1.1{0,1}
-
-aws elbv2 create-listener \
-  --load-balancer-arn ${LOAD_BALANCER_ARN} \
-  --protocol TCP \
-  --port 443 \
-  --default-actions Type=forward,TargetGroupArn=${TARGET_GROUP_ARN} \
-  --output text --query 'Listeners[].ListenerArn'
-
-KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
-  --load-balancer-arns ${LOAD_BALANCER_ARN} \
-  --output text --query 'LoadBalancers[].DNSName')
-```
-
-We create an internet-facing network load balancer. It forwards all TCP traffic to the controllers. Although it is theoretically possible to spin up a k8s cluster using `kubeadm` without a load balancer for the controllers, your team will want it eventually, so better to future proof. A simple network load balancer in `us-east-1` won't break the bank (with little traffic it could be like $20 a month?)
-
 ### Security Groups
 ```
 SECURITY_GROUP_ID=$(aws ec2 create-security-group \
@@ -195,3 +160,38 @@ done
 ```
 
 Create 2 worker nodes. They do not need explicit private IPs.
+
+### Load Balancer
+```
+LOAD_BALANCER_ARN=$(aws elbv2 create-load-balancer \
+  --name k8stheway \
+  --subnets ${SUBNET_ID} \
+  --scheme internet-facing \
+  --type network \
+  --output text --query 'LoadBalancers[].LoadBalancerArn')
+
+TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+  --name k8stheway \
+  --protocol TCP \
+  --port 6443 \
+  --vpc-id ${VPC_ID} \
+  --target-type ip \
+  --output text --query 'TargetGroups[].TargetGroupArn')
+
+aws elbv2 register-targets \
+  --target-group-arn ${TARGET_GROUP_ARN} \
+  --targets Id=10.0.1.1{0,1}
+
+aws elbv2 create-listener \
+  --load-balancer-arn ${LOAD_BALANCER_ARN} \
+  --protocol TCP \
+  --port 443 \
+  --default-actions Type=forward,TargetGroupArn=${TARGET_GROUP_ARN} \
+  --output text --query 'Listeners[].ListenerArn'
+
+KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
+  --load-balancer-arns ${LOAD_BALANCER_ARN} \
+  --output text --query 'LoadBalancers[].DNSName')
+```
+
+We create an internet-facing network load balancer. It forwards all TCP traffic to the controllers. Although it is theoretically possible to spin up a k8s cluster using `kubeadm` without a load balancer for the controllers, your team will want it eventually, so better to future proof. A simple network load balancer in `us-east-1` won't break the bank (with little traffic it could be like $20 a month?)
